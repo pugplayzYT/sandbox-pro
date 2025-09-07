@@ -19,7 +19,7 @@ MonoBehaviour:
   isLiquid: 0
   isGas: 0
   density: 2
-  isGravityAffected: 1
+  isGravityAffected: 0
   isFlammable: 0
   burnsInto: {fileID: 0}
   burnChance: 0.4

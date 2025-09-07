@@ -13,6 +13,7 @@ public class UIManager : MonoBehaviour
     public UIDocument uiDocument;
     public SimulationManager simulationManager;
     public AnnouncementClient announcementClient;
+    public EventManager eventManager;
 
     public static bool IsPointerOverUI { get; private set; }
 
@@ -31,14 +32,19 @@ public class UIManager : MonoBehaviour
     private ScrollView consoleOutputScrollView;
     private VisualElement consoleOutputContainer;
     private bool isConsoleOpen = false;
-    public List<string> commandList = new List<string> { "clearall", "printallitems", "help", "version", "announce", "givemoney", "getids", "clearallmoney" };
+    public List<string> commandList = new List<string> { "clearall", "printallitems", "help", "version", "announce", "givemoney", "getids", "clearallmoney", "startevent" };
     private List<string> commandHistory = new List<string>();
     private int historyIndex = -1;
-    // Store device IDs received from the server for autocomplete
     private List<string> connectedDeviceIDs = new List<string>();
 
     private VisualElement announcementBanner;
     private Label announcementLabel;
+
+    private VisualElement eventContainer;
+    private Label eventNameLabel;
+    private Label eventTimerLabel;
+    private VisualElement eventTooltip;
+    private Label eventMultiplierLabel;
 
     private bool isAuthorized = false;
     private string consoleAuthFilePath;
@@ -52,7 +58,7 @@ public class UIManager : MonoBehaviour
 
     void Start()
     {
-        if (uiDocument == null || simulationManager == null)
+        if (uiDocument == null || simulationManager == null || eventManager == null)
         {
             Debug.LogError("UI Manager is missing links!");
             return;
@@ -63,6 +69,7 @@ public class UIManager : MonoBehaviour
         SetupUI();
         SetupConsole();
         SetupAnnouncementBanner();
+        SetupEventUI();
         CheckAuthorization();
 
         if (announcementClient != null)
@@ -79,13 +86,12 @@ public class UIManager : MonoBehaviour
     {
         if (announcementClient != null)
         {
-            // NEW: Check for new device ID list from the server
             if (announcementClient.deviceIdsQueue.TryDequeue(out List<string> ids))
             {
                 UpdateConnectedDeviceIDs(ids);
             }
         }
-    
+
         timeSinceLastSave += Time.deltaTime;
         if (timeSinceLastSave >= SaveInterval)
         {
@@ -181,14 +187,46 @@ public class UIManager : MonoBehaviour
         var root = uiDocument.rootVisualElement;
         fpsLabel = root.Q<Label>("fps-label");
         moneyLabel = root.Q<Label>("money-label");
-
-        RebuildParticleButtons(); // This now handles the eraser too
-
-        // --- FIX HERE --- 
-        // The eraser button logic has been removed from here.
-
+        RebuildParticleButtons();
         UpdateSelectedButtonUI();
         UpdateMoneyLabel();
+    }
+
+    void SetupEventUI()
+    {
+        var root = uiDocument.rootVisualElement;
+        eventContainer = root.Q<VisualElement>("event-container");
+        eventNameLabel = root.Q<Label>("event-name-label");
+        eventTimerLabel = root.Q<Label>("event-timer-label");
+        eventTooltip = root.Q<VisualElement>("event-tooltip");
+        eventMultiplierLabel = root.Q<Label>("event-multiplier-label");
+
+        if (eventContainer != null)
+        {
+            eventContainer.RegisterCallback<PointerEnterEvent>(evt => eventTooltip.style.display = DisplayStyle.Flex);
+            eventContainer.RegisterCallback<PointerLeaveEvent>(evt => eventTooltip.style.display = DisplayStyle.None);
+            HideEventUI();
+        }
+    }
+
+    public void ShowEventUI(EventData data)
+    {
+        if (eventContainer == null) return;
+        eventNameLabel.text = data.eventName;
+        eventMultiplierLabel.text = $"x{data.moneyMultiplier:F2} Money";
+        eventContainer.style.display = DisplayStyle.Flex;
+    }
+
+    public void HideEventUI()
+    {
+        if (eventContainer == null) return;
+        eventContainer.style.display = DisplayStyle.None;
+    }
+
+    public void UpdateEventTimer(float timeRemaining)
+    {
+        if (eventTimerLabel == null || !eventManager.isEventActive) return;
+        eventTimerLabel.text = $"Time Left: {Mathf.CeilToInt(timeRemaining)}s";
     }
 
     private void RebuildParticleButtons()
@@ -218,8 +256,6 @@ public class UIManager : MonoBehaviour
             particleButtons.Add(button);
         }
 
-        // --- FIX HERE ---
-        // The eraser logic is now safely inside the rebuild function.
         if (eraserButton == null)
         {
             eraserButton = new Button { text = "Eraser" };
@@ -234,7 +270,6 @@ public class UIManager : MonoBehaviour
     {
         for (int i = 0; i < particleButtons.Count; i++)
         {
-            // Safety check in case the number of particle types changes dynamically
             if (i < simulationManager.particleTypes.Count)
             {
                 bool isSelected = simulationManager.particleTypes[i].id == SimulationManager.currentBrushId;
@@ -342,6 +377,7 @@ public class UIManager : MonoBehaviour
 
     public void LogToConsole(string message)
     {
+        if (consoleOutputContainer == null || consoleOutputScrollView == null) return;
         var label = new Label(message);
         label.AddToClassList("console-output-label");
         label.style.color = Color.cyan;
@@ -349,7 +385,6 @@ public class UIManager : MonoBehaviour
         consoleOutputScrollView.schedule.Execute(() => consoleOutputScrollView.ScrollTo(consoleOutputContainer.Children().LastOrDefault()));
     }
 
-    // NEW: Method to update the list of connected device IDs
     private void UpdateConnectedDeviceIDs(List<string> ids)
     {
         connectedDeviceIDs = ids;
@@ -377,6 +412,7 @@ public class UIManager : MonoBehaviour
         {
             ProcessCommand(consoleInput.text);
             consoleInput.SetValueWithoutNotify("");
+            autocompleteBox.Clear();
             evt.StopImmediatePropagation();
         }
         else if (evt.keyCode == KeyCode.Tab)
@@ -387,8 +423,17 @@ public class UIManager : MonoBehaviour
             if (firstSuggestion != null)
             {
                 var words = consoleInput.text.Split(' ');
-                words[words.Length - 1] = firstSuggestion.text;
-                string completedText = string.Join(" ", words) + " ";
+                string completedText;
+                if (words.Length > 1)
+                {
+                    words[words.Length - 1] = firstSuggestion.text;
+                    completedText = string.Join(" ", words) + " ";
+                }
+                else
+                {
+                    completedText = firstSuggestion.text + " ";
+                }
+
                 consoleInput.value = completedText;
                 consoleInput.schedule.Execute(() =>
                 {
@@ -432,34 +477,60 @@ public class UIManager : MonoBehaviour
         UpdateAutocomplete(evt.newValue);
     }
 
+    // --- THIS IS THE COMPLETELY REWRITTEN AND FIXED METHOD ---
     private void UpdateAutocomplete(string currentText)
     {
         autocompleteBox.Clear();
-        if (string.IsNullOrWhiteSpace(currentText)) return;
+        if (string.IsNullOrEmpty(currentText)) return;
+
         var parts = currentText.Split(' ');
-        var currentWord = parts.Last();
-        if (string.IsNullOrEmpty(currentWord) && parts.Length > 1)
-        {
-            return;
-        }
-        List<string> suggestions;
+
+        // --- Part 1: Handle Command Autocomplete ---
         if (parts.Length == 1)
         {
-            suggestions = commandList.Where(c => c.StartsWith(currentWord, System.StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-        else if (parts.Length == 2 && parts[0].ToLower() == "clearall")
-        {
-            suggestions = simulationManager.GetParticleTypeNames().Where(p => p.StartsWith(currentWord, System.StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-        // NEW: Autocomplete for device IDs
-        else if (parts.Length == 2 && parts[0].ToLower() == "givemoney")
-        {
-            suggestions = connectedDeviceIDs.Where(id => id.StartsWith(currentWord, System.StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-        else
-        {
+            string currentCommandPart = parts[0];
+            var suggestions = commandList
+                .Where(c => c.StartsWith(currentCommandPart, System.StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            ShowSuggestions(suggestions, isCommand: true);
             return;
         }
+
+        // --- Part 2: Handle Argument Autocomplete ---
+        if (parts.Length >= 2 && !currentText.EndsWith(" "))
+        {
+            string command = parts[0].ToLower();
+            string currentArgumentPart = parts.Last();
+            List<string> suggestions = new List<string>();
+
+            switch (command)
+            {
+                case "clearall":
+                    suggestions = simulationManager.GetParticleTypeNames()
+                        .Where(p => p.StartsWith(currentArgumentPart, System.StringComparison.OrdinalIgnoreCase)).ToList();
+                    break;
+                case "givemoney":
+                    if (parts.Length == 2) // Only suggest for the device ID part
+                    {
+                        suggestions = connectedDeviceIDs
+                            .Where(id => id.StartsWith(currentArgumentPart, System.StringComparison.OrdinalIgnoreCase)).ToList();
+                    }
+                    break;
+                case "startevent":
+                    if (parts.Length == 2) // Only suggest for the event name part
+                    {
+                        suggestions = eventManager.allEvents
+                            .Select(e => e.eventName)
+                            .Where(name => name.StartsWith(currentArgumentPart, System.StringComparison.OrdinalIgnoreCase)).ToList();
+                    }
+                    break;
+            }
+            ShowSuggestions(suggestions, isCommand: false, commandPart: parts[0]);
+        }
+    }
+
+    private void ShowSuggestions(List<string> suggestions, bool isCommand, string commandPart = "")
+    {
         foreach (var suggestion in suggestions.Take(5))
         {
             var label = new Label(suggestion);
@@ -467,29 +538,38 @@ public class UIManager : MonoBehaviour
             label.style.color = Color.cyan;
             label.RegisterCallback<PointerDownEvent>(evt =>
             {
-                var words = consoleInput.text.Split(' ');
-                words[words.Length - 1] = suggestion;
-                string completedText = string.Join(" ", words) + " ";
-                consoleInput.value = completedText;
+                string completedText = isCommand ? suggestion : $"{commandPart} {suggestion}";
+                completedText += " ";
+
+                consoleInput.SetValueWithoutNotify(completedText);
                 consoleInput.schedule.Execute(() => {
                     consoleInput.Focus();
                     consoleInput.cursorIndex = completedText.Length;
                     consoleInput.selectIndex = completedText.Length;
                 });
+                autocompleteBox.Clear();
             });
             autocompleteBox.Add(label);
         }
     }
 
+
     private void ProcessCommand(string commandText)
     {
         if (string.IsNullOrWhiteSpace(commandText)) return;
         LogToConsole($"> {commandText}");
+
         if (!isAuthorized)
         {
             LogToConsole("You're not on the list. You can't run commands.");
             return;
         }
+        if (!announcementClient.IsAuthenticated())
+        {
+            LogToConsole("Cannot run command. Not authenticated with server.");
+            return;
+        }
+
         if (commandHistory.Count == 0 || commandHistory.Last() != commandText)
         {
             commandHistory.Add(commandText);
@@ -525,14 +605,25 @@ public class UIManager : MonoBehaviour
                     LogToConsole("Usage: announce <message>");
                 }
                 break;
-            case "givemoney": // NEW: Change 'give' to 'givemoney'
+            case "givemoney":
                 GiveMoneyCommand(args);
                 break;
-            case "getids": // NEW: Added getids command
+            case "getids":
                 GetDeviceIDsCommand();
                 break;
             case "clearallmoney":
                 ClearAllMoneyCommand();
+                break;
+            case "startevent":
+                if (args.Length > 0)
+                {
+                    string eventName = args[0];
+                    announcementClient.TriggerEvent(eventName);
+                }
+                else
+                {
+                    LogToConsole("Usage: startevent <EventName>");
+                }
                 break;
             default:
                 LogToConsole($"Console: Unknown command '{command}'");
@@ -540,7 +631,6 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // NEW: Method to handle the 'getids' command
     private void GetDeviceIDsCommand()
     {
         LogToConsole("Requesting device IDs from server...");
@@ -551,16 +641,12 @@ public class UIManager : MonoBehaviour
     {
         currentMoney = 0.00f;
         unlockedParticles.Clear();
-
         UpdateMoneyLabel();
         RebuildParticleButtons();
-
         SaveManager.SaveGame(currentMoney, unlockedParticles);
-
         LogToConsole("Bet. Wiped all money and purchased items. Back to zero.");
     }
 
-    // NEW: Renamed method from GiveCommand to GiveMoneyCommand
     private void GiveMoneyCommand(string[] args)
     {
         if (args.Length < 2)

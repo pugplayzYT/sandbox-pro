@@ -5,6 +5,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Collections;
+using Newtonsoft.Json.Linq;
 
 public class AnnouncementClient : MonoBehaviour
 {
@@ -14,24 +15,26 @@ public class AnnouncementClient : MonoBehaviour
     public string adminAnnounceKey = "penislol";
 
     public UIManager uiManager;
+    public EventManager eventManager; // ADD THIS
     public SocketIOUnity client;
     private bool isServerAuthenticated = false;
     private bool isClientReadyToEmit = false;
     private bool needsToAuthenticate = false;
 
-    // --- FIX: Thread-safe queues for ALL incoming server events ---
-    // These will hold data from the server until the main thread can process it.
     public ConcurrentQueue<string> announcementQueue = new ConcurrentQueue<string>();
     public ConcurrentQueue<float> moneyQueue = new ConcurrentQueue<float>();
-    // NEW: A queue for incoming device IDs
     public ConcurrentQueue<List<string>> deviceIdsQueue = new ConcurrentQueue<List<string>>();
+
+    // NEW EVENT QUEUES
+    public ConcurrentQueue<JObject> eventStartQueue = new ConcurrentQueue<JObject>();
+    public ConcurrentQueue<object> eventEndQueue = new ConcurrentQueue<object>();
 
 
     void Start()
     {
-        if (uiManager == null)
+        if (uiManager == null || eventManager == null) // ADD eventManager NULL CHECK
         {
-            Debug.LogError($"[{DateTime.Now:HH:mm:ss}] AnnouncementClient is missing a link to UIManager!");
+            Debug.LogError($"[{DateTime.Now:HH:mm:ss}] AnnouncementClient is missing a link to UIManager or EventManager!");
             return;
         }
         SetupClient();
@@ -39,26 +42,39 @@ public class AnnouncementClient : MonoBehaviour
 
     void Update()
     {
-        // Handle the one-time authentication after connecting
         if (needsToAuthenticate)
         {
             needsToAuthenticate = false;
             StartCoroutine(AuthenticateAfterDelay());
         }
 
-        // --- FIX: Process any queued announcements on the main thread ---
         if (announcementQueue.TryDequeue(out string message))
         {
-            // Now it's safe to call the UIManager
             uiManager.ShowAnnouncementBanner(message);
         }
 
-        // --- FIX: Process any queued money on the main thread ---
         if (moneyQueue.TryDequeue(out float amount))
         {
-            // Now it's safe to call the UIManager and update the game state
             uiManager.AddMoney(amount);
             uiManager.LogToConsole($"You just received ${amount:F2} from a dev!");
+        }
+
+        // NEW: Handle event start
+        if (eventStartQueue.TryDequeue(out JObject data))
+        {
+            string eventName = data["eventName"].ToString();
+            float timeRemaining = data["timeRemaining"].ToObject<float>();
+            EventData eventData = eventManager.GetEventByName(eventName);
+            if (eventData != null)
+            {
+                eventManager.StartEvent(eventData, timeRemaining);
+            }
+        }
+
+        // NEW: Handle event end
+        if (eventEndQueue.TryDequeue(out _))
+        {
+            eventManager.EndEvent();
         }
     }
 
@@ -89,8 +105,6 @@ public class AnnouncementClient : MonoBehaviour
             Debug.LogError($"[{DateTime.Now:HH:mm:ss}] SocketIO Error: {e}");
         };
 
-        // --- FIX: Event handlers now ONLY add data to the queues. No Unity logic here! ---
-
         client.On("global_announcement", (response) =>
         {
             var data = response.GetValue<Dictionary<string, object>>();
@@ -112,20 +126,27 @@ public class AnnouncementClient : MonoBehaviour
             }
         });
 
-        // NEW: Event handler for receiving device IDs
         client.On("device_ids_list", (response) =>
         {
             var ids = response.GetValue<List<string>>();
             deviceIdsQueue.Enqueue(ids);
         });
 
+        // NEW: Event handlers for global events
+        client.On("start_event", (response) =>
+        {
+            eventStartQueue.Enqueue(response.GetValue<JObject>());
+        });
+
+        client.On("end_event", (response) =>
+        {
+            eventEndQueue.Enqueue(null);
+        });
+
         client.On("auth_success", (response) =>
         {
             isServerAuthenticated = true;
             Debug.Log($"[{DateTime.Now:HH:mm:ss}] Server authentication confirmed.");
-            // We can't update UI from here, so we'll queue a console message instead.
-            // This is just an example of good practice.
-            // For now, we let UIManager handle the message in its own Update loop.
         });
 
         client.On("auth_error", (response) =>
@@ -143,6 +164,10 @@ public class AnnouncementClient : MonoBehaviour
         // Using a coroutine is the Unity-native way to wait.
         yield return new WaitForSeconds(0.5f);
         AuthenticateClient();
+    }
+    public bool IsAuthenticated()
+    {
+        return isServerAuthenticated;
     }
 
     private async void AuthenticateClient()
@@ -165,7 +190,6 @@ public class AnnouncementClient : MonoBehaviour
         }
     }
 
-    // --- FIX: Re-added this method to resolve the compile error in UIManager ---
     public async void ConnectToServer()
     {
         if (client != null && !client.Connected)
@@ -186,7 +210,6 @@ public class AnnouncementClient : MonoBehaviour
         uiManager.LogToConsole("Announcement sent.");
     }
 
-    // NEW: Method to request device IDs from the server
     public async void RequestDeviceIDs()
     {
         if (client == null || !client.Connected || !isServerAuthenticated)
@@ -206,5 +229,17 @@ public class AnnouncementClient : MonoBehaviour
             return;
         }
         await client.EmitAsync("give_money_to_player", new { device_id = targetDeviceID, amount = amount, secret_key = adminAnnounceKey });
+    }
+
+    // NEW: Method to trigger a global event
+    public async void TriggerEvent(string eventName)
+    {
+        if (client == null || !client.Connected || !isServerAuthenticated)
+        {
+            uiManager.LogToConsole("Cannot start event. Not connected or authenticated.");
+            return;
+        }
+        await client.EmitAsync("trigger_event", new { event_name = eventName, secret_key = adminAnnounceKey });
+        uiManager.LogToConsole($"Sent request to start event: {eventName}");
     }
 }

@@ -3,14 +3,12 @@ using UnityEngine;
 using System.Text;
 using System.Linq;
 
-// --- CHUNK CLASS ---
 public class Chunk
 {
     public int x, y;
     public Chunk(int x, int y) { this.x = x; this.y = y; }
 }
 
-// --- PARTICLE INTERACTION CLASS ---
 [System.Serializable]
 public class ParticleInteraction
 {
@@ -37,6 +35,7 @@ public class SimulationManager : MonoBehaviour
     [Header("Required Links")]
     public List<ParticleData> particleTypes;
     public UIManager uiManager;
+    public EventManager eventManager; // ADD THIS
 
     [Header("Interactions")]
     public List<ParticleInteraction> interactions;
@@ -53,10 +52,10 @@ public class SimulationManager : MonoBehaviour
     [Header("Advanced Liquid Physics")]
     [Tooltip("How many times to run the liquid flow logic per frame. Higher is faster/smoother.")]
     public int liquidFlowPasses = 5;
-    [Tooltip("The amount of money earned per particle placed.")] // NEW
-    public float moneyPerParticle = 0.0001f; // NEW
+    [Tooltip("The amount of money earned per particle placed.")]
+    public float moneyPerParticle = 0.0001f;
 
-    public static int currentBrushId = 1;
+    public static int currentBrushId = 1;
     private Vector2 lastMouseGridPosition = -Vector2.one;
 
     private Camera mainCamera;
@@ -142,7 +141,13 @@ public class SimulationManager : MonoBehaviour
                 {
                     if (particleId != 0 && grid[drawX, drawY] == 0)
                     {
-                        uiManager.AddMoney(moneyPerParticle);
+                        // MODIFIED: Apply event multiplier
+                        float moneyToAdd = moneyPerParticle;
+                        if (eventManager != null && eventManager.isEventActive)
+                        {
+                            moneyToAdd *= eventManager.currentEvent.moneyMultiplier;
+                        }
+                        uiManager.AddMoney(moneyToAdd);
                     }
 
                     if (particleId == 0 || grid[drawX, drawY] == 0)
@@ -274,9 +279,7 @@ public class SimulationManager : MonoBehaviour
         int temp = grid[x1, y1]; grid[x1, y1] = grid[x2, y2]; grid[x2, y2] = temp; WakeChunkAt(x1, y1); WakeChunkAt(x2, y2);
     }
 
-    // I'm moving the interaction logic for liquids here. 
-    // This ensures liquids check for reactions before they flow.
-    void StepLiquids()
+    void StepLiquids()
     {
         foreach (var chunk in activeChunks)
         {
@@ -289,21 +292,19 @@ public class SimulationManager : MonoBehaviour
             {
                 for (int x = startX; x < endX; x++)
                 {
-                    if (updatedThisFrame[x, y]) continue; // Check if already updated
-                    int particleId = grid[x, y];
+                    if (updatedThisFrame[x, y]) continue;
+                    int particleId = grid[x, y];
                     if (particleId == 0) continue;
                     if (!particleDict.TryGetValue(particleId, out ParticleData data) || data == null || !data.isLiquid) continue;
 
-                    // Check for and perform interactions FIRST
-                    bool hasReacted = CheckAndPerformInteractions(x, y, data);
+                    bool hasReacted = CheckAndPerformInteractions(x, y, data);
                     if (hasReacted)
                     {
                         updatedThisFrame[x, y] = true;
-                        continue; // Skip to the next particle if a reaction occurred
-                    }
+                        continue;
+                    }
 
-                    // If no reaction, then do the liquid flow physics
-                    int dir = (Random.value > 0.5f) ? 1 : -1;
+                    int dir = (Random.value > 0.5f) ? 1 : -1;
                     if (GetCell(x, y - 1) == 0)
                     {
                         SwapCells(x, y, x, y - 1);
@@ -331,15 +332,14 @@ public class SimulationManager : MonoBehaviour
                     }
                     else
                     {
-                        updatedThisFrame[x, y] = true; // Mark as updated even if it didn't move
-                    }
+                        updatedThisFrame[x, y] = true;
+                    }
                 }
             }
         }
     }
 
-    // Your StepSimulation method now only handles solids and gases.
-    void StepSimulation()
+    void StepSimulation()
     {
         System.Array.Clear(updatedThisFrame, 0, updatedThisFrame.Length);
         var chunksToProcess = new List<Chunk>(activeChunks);
@@ -360,8 +360,7 @@ public class SimulationManager : MonoBehaviour
 
                     if (!particleDict.TryGetValue(particleId, out ParticleData data) || data == null) continue;
 
-                    // We moved all liquid logic to StepLiquids(), so we can skip them here.
-                    if (data.isLiquid) continue;
+                    if (data.isLiquid) continue;
 
                     bool hasReacted = CheckAndPerformInteractions(x, y, data);
                     if (hasReacted)
@@ -372,8 +371,7 @@ public class SimulationManager : MonoBehaviour
 
                     bool moved = false;
 
-                    // Solid Physics: Falls straight down if there's space
-                    if (data.isSolid && data.isGravityAffected)
+                    if (data.isSolid && data.isGravityAffected)
                     {
                         int belowId = GetCell(x, y - 1);
                         if (belowId == 0)
@@ -383,8 +381,7 @@ public class SimulationManager : MonoBehaviour
                             moved = true;
                         }
                     }
-                    // Gas Physics: Rises up
-                    else if (data.isGas)
+                    else if (data.isGas)
                     {
                         int aboveId = GetCell(x, y + 1);
                         if (aboveId == 0)
@@ -449,11 +446,9 @@ public class SimulationManager : MonoBehaviour
                                 int outcomeIdForCurrent = (isCurrentParticleA ? interaction.outcomeForA?.id : interaction.outcomeForB?.id) ?? 0;
                                 int outcomeIdForNeighbor = (isCurrentParticleA ? interaction.outcomeForB?.id : interaction.outcomeForA?.id) ?? 0;
 
-                                // If an interaction happens, update the cells.
                                 grid[x, y] = outcomeIdForCurrent;
                                 grid[neighborX, neighborY] = outcomeIdForNeighbor;
 
-                                // We need to mark both cells as updated so they don't move or react again this frame.
                                 updatedThisFrame[x, y] = true;
                                 updatedThisFrame[neighborX, neighborY] = true;
 

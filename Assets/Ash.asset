@@ -17,8 +17,9 @@ MonoBehaviour:
   color: {r: 0.3132075, g: 0.3132075, b: 0.3132075, a: 1}
   isSolid: 1
   isLiquid: 0
-  isGas: 1
+  isGas: 0
   density: 2
+  isGravityAffected: 0
   isFlammable: 0
   burnsInto: {fileID: 0}
   burnChance: 0.1
