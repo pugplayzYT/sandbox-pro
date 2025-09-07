@@ -42,6 +42,7 @@ public class AnnouncementClient : MonoBehaviour
 
     void Update()
     {
+        Debug.Log($"[AnnouncementClient] Update is running. Event Queue Count: {eventStartQueue.Count}");
         if (needsToAuthenticate)
         {
             needsToAuthenticate = false;
@@ -133,10 +134,30 @@ public class AnnouncementClient : MonoBehaviour
         });
 
         // NEW: Event handlers for global events
+
+        // THE FIX FOR THE CLIENT: Get the response as a single JObject.
         client.On("start_event", (response) =>
         {
-            eventStartQueue.Enqueue(response.GetValue<JObject>());
+            try
+            {
+                // The response itself is an array, so grab as JArray
+                var arr = response.GetValue<JArray>();
+                if (arr != null && arr.Count > 0)
+                {
+                    var eventData = arr[0].ToObject<JObject>();
+                    if (eventData != null)
+                    {
+                        eventStartQueue.Enqueue(eventData);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error processing 'start_event': {ex.Message}\nRaw: {response}");
+            }
         });
+
+
 
         client.On("end_event", (response) =>
         {

@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6db1feee8d96cf44fa868e6805c3bdc6, type: 3}
   m_Name: Pugsarival
   m_EditorClassIdentifier: 
-  eventName: 
-  eventAudio: {fileID: 0}
-  moneyMultiplier: 1.5
+  eventName: Pugsarival
+  eventAudio: {fileID: 8300000, guid: 9bf6080e507151a4eabcdf105f79c9e9, type: 3}
+  moneyMultiplier: 3

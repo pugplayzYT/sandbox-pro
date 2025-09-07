@@ -45,13 +45,38 @@ public class EventManager : MonoBehaviour
 
     public void StartEvent(EventData eventData, float serverTimeRemaining)
     {
-        if (eventData == null) return;
+        if (eventData == null)
+        {
+            Debug.LogError("StartEvent called with null eventData.");
+            return;
+        }
 
         currentEvent = eventData;
         eventTimeRemaining = serverTimeRemaining;
         isEventActive = true;
 
-        eventAudioSource.PlayOneShot(currentEvent.eventAudio);
+        // --- NEW BULLETPROOF AUDIO CODE ---
+        if (eventAudioSource == null)
+        {
+            Debug.LogWarning("eventAudioSource was null. Getting or adding a new one.");
+            eventAudioSource = GetComponent<AudioSource>();
+            if (eventAudioSource == null)
+            {
+                eventAudioSource = gameObject.AddComponent<AudioSource>();
+            }
+        }
+
+        if (currentEvent.eventAudio != null)
+        {
+            Debug.Log("Playing event audio clip!");
+            eventAudioSource.PlayOneShot(currentEvent.eventAudio);
+        }
+        else
+        {
+            Debug.LogWarning("Event started, but it has no audio clip assigned.");
+        }
+        // --- END OF NEW CODE ---
+
         uiManager.ShowEventUI(currentEvent);
     }
 
@@ -65,6 +90,31 @@ public class EventManager : MonoBehaviour
 
     public EventData GetEventByName(string name)
     {
-        return allEvents.Find(e => e.eventName.Equals(name, System.StringComparison.OrdinalIgnoreCase));
+        // --- START OF THE "SNITCH" CODE ---
+        Debug.Log($"[EventManager] Searching for event with name: '{name}'");
+        if (allEvents.Count == 0)
+        {
+            Debug.LogWarning("[EventManager] The 'allEvents' list is empty! Did you add events in the Inspector?");
+            return null;
+        }
+
+        foreach (var e in allEvents)
+        {
+            // This log will show us every name it's checking against.
+            // Pay close attention to extra spaces or spelling!
+            Debug.Log($"[EventManager] ...comparing against: '{e.eventName}'");
+
+            // Using OrdinalIgnoreCase to be safe, but still good to check the logs.
+            if (e.eventName.Equals(name, System.StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.Log($"[EventManager] Match found! Returning '{e.eventName}'.");
+                return e;
+            }
+        }
+
+        Debug.LogError($"[EventManager] NO MATCH FOUND for '{name}'. Check spelling and ensure it's in the 'allEvents' list in the Inspector.");
+        // --- END OF THE "SNITCH" CODE ---
+
+        return null; // This will now only be reached if the loop fails.
     }
 }

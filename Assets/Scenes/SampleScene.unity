@@ -383,6 +383,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8e45aacf29db4a54a92bddda22e35266, type: 2}
   - {fileID: 11400000, guid: 8fa7c11f6a7bcd941ba66e5886304904, type: 2}
   uiManager: {fileID: 1778659431}
+  eventManager: {fileID: 1564833985}
   interactions:
   - interactionName: woodandlavakiss
     particleA: {fileID: 11400000, guid: d7cebf1023ae0444da80db583ea0ef07, type: 2}
@@ -523,6 +524,54 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1564833984
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1564833986}
+  - component: {fileID: 1564833985}
+  m_Layer: 0
+  m_Name: EventManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1564833985
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1564833984}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec0c34598cf8e3b419d89f880b597903, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  uiManager: {fileID: 1778659431}
+  announcementClient: {fileID: 1755225018}
+  allEvents:
+  - {fileID: 11400000, guid: 8ce5cf7f69811924f908da811475c979, type: 2}
+--- !u!4 &1564833986
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1564833984}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -9.640156, y: 7.1169953, z: -12.777935}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1755225017
 GameObject:
   m_ObjectHideFlags: 0
@@ -555,6 +604,7 @@ MonoBehaviour:
   serverUrl: https://concerning-normal-monster-writers.trycloudflare.com
   adminAnnounceKey: penislol
   uiManager: {fileID: 1778659431}
+  eventManager: {fileID: 1564833985}
 --- !u!4 &1755225019
 Transform:
   m_ObjectHideFlags: 0
@@ -637,6 +687,7 @@ MonoBehaviour:
   uiDocument: {fileID: 1778659429}
   simulationManager: {fileID: 904824037}
   announcementClient: {fileID: 1755225018}
+  eventManager: {fileID: 1564833985}
   commandList:
   - clearall
   - printallitems
@@ -646,6 +697,7 @@ MonoBehaviour:
   - givemoney
   - getids
   - clearallmoney
+  - startevent
   currentMoney: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
@@ -657,3 +709,4 @@ SceneRoots:
   - {fileID: 904824038}
   - {fileID: 1032766205}
   - {fileID: 1755225019}
+  - {fileID: 1564833986}
