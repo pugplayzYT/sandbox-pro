@@ -7,6 +7,8 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Text;
 
+// --- NEW: This makes sure the AudioSource component is on the GameObject ---
+[RequireComponent(typeof(AudioSource))]
 public class UIManager : MonoBehaviour
 {
     [Header("Required Links")]
@@ -14,6 +16,14 @@ public class UIManager : MonoBehaviour
     public SimulationManager simulationManager;
     public AnnouncementClient announcementClient;
     public EventManager eventManager;
+
+    // --- NEW: Add a public field for your sound clip ---
+    [Header("Sound Effects")]
+    public AudioClip clickSound;
+
+    // --- NEW: Private variable for the AudioSource component ---
+    private AudioSource audioSource;
+
 
     public static bool IsPointerOverUI { get; private set; }
 
@@ -56,6 +66,36 @@ public class UIManager : MonoBehaviour
     private const float SaveInterval = 30f;
     private float timeSinceLastSave = 0f;
 
+    // --- NEW: We'll use Awake to get the AudioSource component ---
+    void Awake()
+    {
+        audioSource = GetComponent<AudioSource>();
+    }
+    private void AdjustCameraViewport()
+    {
+        var root = uiDocument.rootVisualElement;
+        var sidebar = root.Q("sidebar-container");
+        var mainCamera = Camera.main;
+
+        if (sidebar == null || mainCamera == null)
+        {
+            Debug.LogWarning("Sidebar or Main Camera not found, can't adjust viewport.");
+            return;
+        }
+
+        // Get the final, calculated width of the sidebar in pixels
+        float sidebarWidthPixels = sidebar.resolvedStyle.width;
+
+        // Convert the pixel width to a percentage of the screen width (a value from 0 to 1)
+        float sidebarWidthNormalized = sidebarWidthPixels / (float)Screen.width;
+
+        // Tell the camera its new drawing area (viewport).
+        // It starts after the sidebar (at sidebarWidthNormalized) and fills the rest of the screen.
+        mainCamera.rect = new Rect(sidebarWidthNormalized, 0, 1.0f - sidebarWidthNormalized, 1.0f);
+
+        // This also fixes the input offset in SimulationManager because ScreenToWorldPoint
+        // will now correctly map to the visible game area. Big brain move.
+    }
     void Start()
     {
         if (uiDocument == null || simulationManager == null || eventManager == null)
@@ -80,6 +120,7 @@ public class UIManager : MonoBehaviour
         {
             Debug.LogError("UI Manager is missing a link to AnnouncementClient!");
         }
+        uiDocument.rootVisualElement.schedule.Execute(AdjustCameraViewport).ExecuteLater(1);
     }
 
     void Update()
@@ -133,6 +174,15 @@ public class UIManager : MonoBehaviour
     private void OnApplicationQuit()
     {
         SaveManager.SaveGame(currentMoney, unlockedParticles);
+    }
+
+    // --- NEW: This function will play the sound ---
+    private void PlayButtonClickSound()
+    {
+        if (clickSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(clickSound);
+        }
     }
 
     private void LoadGameData()
@@ -241,6 +291,10 @@ public class UIManager : MonoBehaviour
         {
             Button button = new Button { text = particle.particleName };
             button.AddToClassList("particle-button");
+
+            // --- NEW: Add the sound to every button right here ---
+            button.clicked += PlayButtonClickSound;
+
             int particleId = particle.id;
             if (particle.isShopItem && !unlockedParticles.Contains(particleId))
             {
@@ -261,6 +315,9 @@ public class UIManager : MonoBehaviour
             eraserButton = new Button { text = "Eraser" };
             eraserButton.AddToClassList("particle-button");
             eraserButton.clicked += () => { SimulationManager.currentBrushId = 0; };
+
+            // --- NEW: Add sound to the eraser button too ---
+            eraserButton.clicked += PlayButtonClickSound;
         }
         buttonContainer.Add(eraserButton);
     }
@@ -477,7 +534,6 @@ public class UIManager : MonoBehaviour
         UpdateAutocomplete(evt.newValue);
     }
 
-    // --- THIS IS THE COMPLETELY REWRITTEN AND FIXED METHOD ---
     private void UpdateAutocomplete(string currentText)
     {
         autocompleteBox.Clear();
@@ -485,7 +541,6 @@ public class UIManager : MonoBehaviour
 
         var parts = currentText.Split(' ');
 
-        // --- Part 1: Handle Command Autocomplete ---
         if (parts.Length == 1)
         {
             string currentCommandPart = parts[0];
@@ -496,7 +551,6 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        // --- Part 2: Handle Argument Autocomplete ---
         if (parts.Length >= 2 && !currentText.EndsWith(" "))
         {
             string command = parts[0].ToLower();
@@ -510,14 +564,14 @@ public class UIManager : MonoBehaviour
                         .Where(p => p.StartsWith(currentArgumentPart, System.StringComparison.OrdinalIgnoreCase)).ToList();
                     break;
                 case "givemoney":
-                    if (parts.Length == 2) // Only suggest for the device ID part
+                    if (parts.Length == 2)
                     {
                         suggestions = connectedDeviceIDs
                             .Where(id => id.StartsWith(currentArgumentPart, System.StringComparison.OrdinalIgnoreCase)).ToList();
                     }
                     break;
                 case "startevent":
-                    if (parts.Length == 2) // Only suggest for the event name part
+                    if (parts.Length == 2)
                     {
                         suggestions = eventManager.allEvents
                             .Select(e => e.eventName)

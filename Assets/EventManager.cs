@@ -4,15 +4,11 @@ using System.Collections.Generic;
 public class EventManager : MonoBehaviour
 {
     public static EventManager Instance { get; private set; }
-
     public UIManager uiManager;
-    public AnnouncementClient announcementClient;
     public List<EventData> allEvents;
-
     public EventData currentEvent { get; private set; }
-    public float eventTimeRemaining { get; private set; }
+    private float eventEndTime; // The REAL-WORLD time the event will end
     public bool isEventActive { get; private set; }
-
     private AudioSource eventAudioSource;
 
     void Awake()
@@ -33,13 +29,45 @@ public class EventManager : MonoBehaviour
     {
         if (isEventActive)
         {
-            eventTimeRemaining -= Time.deltaTime;
-            uiManager.UpdateEventTimer(eventTimeRemaining);
+            CheckAndUpdateEventStatus();
+        }
+    }
 
-            if (eventTimeRemaining <= 0)
-            {
-                EndEvent();
-            }
+    // NEW: Handle when application gains/loses focus
+    void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus && isEventActive)
+        {
+            // Check event status immediately when regaining focus
+            CheckAndUpdateEventStatus();
+        }
+    }
+
+    // NEW: Handle when application is paused/unpaused (mobile)
+    void OnApplicationPause(bool pauseStatus)
+    {
+        if (!pauseStatus && isEventActive)
+        {
+            // Check event status when unpaused
+            CheckAndUpdateEventStatus();
+        }
+    }
+
+    // NEW: Extracted event checking logic
+    private void CheckAndUpdateEventStatus()
+    {
+        float timeRemaining = eventEndTime - Time.realtimeSinceStartup;
+        if (timeRemaining > 0)
+        {
+            uiManager.UpdateEventTimer(timeRemaining);
+        }
+        else
+        {
+            // Event has expired
+            Debug.Log("[EventManager] Event timer expired locally.");
+            isEventActive = false;
+            currentEvent = null;
+            uiManager.HideEventUI();
         }
     }
 
@@ -50,71 +78,37 @@ public class EventManager : MonoBehaviour
             Debug.LogError("StartEvent called with null eventData.");
             return;
         }
-
+        Debug.Log($"[EventManager] Starting event '{eventData.eventName}' with {serverTimeRemaining}s remaining.");
         currentEvent = eventData;
-        eventTimeRemaining = serverTimeRemaining;
+        eventEndTime = Time.realtimeSinceStartup + serverTimeRemaining;
         isEventActive = true;
 
-        // --- NEW BULLETPROOF AUDIO CODE ---
-        if (eventAudioSource == null)
-        {
-            Debug.LogWarning("eventAudioSource was null. Getting or adding a new one.");
-            eventAudioSource = GetComponent<AudioSource>();
-            if (eventAudioSource == null)
-            {
-                eventAudioSource = gameObject.AddComponent<AudioSource>();
-            }
-        }
-
+        if (eventAudioSource == null) eventAudioSource = gameObject.AddComponent<AudioSource>();
         if (currentEvent.eventAudio != null)
         {
-            Debug.Log("Playing event audio clip!");
             eventAudioSource.PlayOneShot(currentEvent.eventAudio);
         }
-        else
-        {
-            Debug.LogWarning("Event started, but it has no audio clip assigned.");
-        }
-        // --- END OF NEW CODE ---
-
         uiManager.ShowEventUI(currentEvent);
     }
 
     public void EndEvent()
     {
+        Debug.Log("[EventManager] Received end_event from server. Ending event officially.");
         isEventActive = false;
         currentEvent = null;
-        eventTimeRemaining = 0;
         uiManager.HideEventUI();
     }
 
     public EventData GetEventByName(string name)
     {
-        // --- START OF THE "SNITCH" CODE ---
-        Debug.Log($"[EventManager] Searching for event with name: '{name}'");
-        if (allEvents.Count == 0)
-        {
-            Debug.LogWarning("[EventManager] The 'allEvents' list is empty! Did you add events in the Inspector?");
-            return null;
-        }
-
         foreach (var e in allEvents)
         {
-            // This log will show us every name it's checking against.
-            // Pay close attention to extra spaces or spelling!
-            Debug.Log($"[EventManager] ...comparing against: '{e.eventName}'");
-
-            // Using OrdinalIgnoreCase to be safe, but still good to check the logs.
             if (e.eventName.Equals(name, System.StringComparison.OrdinalIgnoreCase))
             {
-                Debug.Log($"[EventManager] Match found! Returning '{e.eventName}'.");
                 return e;
             }
         }
-
-        Debug.LogError($"[EventManager] NO MATCH FOUND for '{name}'. Check spelling and ensure it's in the 'allEvents' list in the Inspector.");
-        // --- END OF THE "SNITCH" CODE ---
-
-        return null; // This will now only be reached if the loop fails.
+        Debug.LogError($"[EventManager] Event with name '{name}' not found in the allEvents list!");
+        return null;
     }
 }

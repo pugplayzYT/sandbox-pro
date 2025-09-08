@@ -182,7 +182,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -190,6 +189,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!20 &519420031
 Camera:
   m_ObjectHideFlags: 0
@@ -382,6 +382,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 421aca7f72f265f409f246bfdad10ce4, type: 2}
   - {fileID: 11400000, guid: 8e45aacf29db4a54a92bddda22e35266, type: 2}
   - {fileID: 11400000, guid: 8fa7c11f6a7bcd941ba66e5886304904, type: 2}
+  - {fileID: 11400000, guid: d51a808003cca674295193fe45c05fc5, type: 2}
   uiManager: {fileID: 1778659431}
   eventManager: {fileID: 1564833985}
   interactions:
@@ -394,8 +395,8 @@ MonoBehaviour:
   - interactionName: lavaandwatertoucheachotherifykandmakeobsidion
     particleA: {fileID: 11400000, guid: d7cebf1023ae0444da80db583ea0ef07, type: 2}
     particleB: {fileID: 11400000, guid: 77dd5173bc96e9549915c3ee514905b0, type: 2}
-    outcomeForA: {fileID: 11400000, guid: ecf0252738eb148409e3ef192c77132c, type: 2}
-    outcomeForB: {fileID: 11400000, guid: ecf0252738eb148409e3ef192c77132c, type: 2}
+    outcomeForA: {fileID: 11400000, guid: d51a808003cca674295193fe45c05fc5, type: 2}
+    outcomeForB: {fileID: 11400000, guid: d51a808003cca674295193fe45c05fc5, type: 2}
     chance: 1
   - interactionName: skinburnsduh
     particleA: {fileID: 11400000, guid: d7cebf1023ae0444da80db583ea0ef07, type: 2}
@@ -474,6 +475,8 @@ SpriteRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -495,6 +498,7 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -557,6 +561,7 @@ MonoBehaviour:
   announcementClient: {fileID: 1755225018}
   allEvents:
   - {fileID: 11400000, guid: 8ce5cf7f69811924f908da811475c979, type: 2}
+  - {fileID: 11400000, guid: 1eb9c202eafde6b4c852a569383143f0, type: 2}
 --- !u!4 &1564833986
 Transform:
   m_ObjectHideFlags: 0
@@ -631,6 +636,7 @@ GameObject:
   - component: {fileID: 1778659430}
   - component: {fileID: 1778659429}
   - component: {fileID: 1778659431}
+  - component: {fileID: 1778659432}
   m_Layer: 5
   m_Name: Sidebar
   m_TagString: Untagged
@@ -654,9 +660,13 @@ MonoBehaviour:
   m_ParentUI: {fileID: 0}
   sourceAsset: {fileID: 9197481963319205126, guid: 793d95068513c494aaf4011a0654c7eb, type: 3}
   m_SortingOrder: 0
+  m_Position: 0
   m_WorldSpaceSizeMode: 1
   m_WorldSpaceWidth: 1920
   m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
 --- !u!4 &1778659430
 Transform:
   m_ObjectHideFlags: 0
@@ -688,6 +698,7 @@ MonoBehaviour:
   simulationManager: {fileID: 904824037}
   announcementClient: {fileID: 1755225018}
   eventManager: {fileID: 1564833985}
+  clickSound: {fileID: 8300000, guid: 166961993f3cbf74e8cef23eb6626d9a, type: 3}
   commandList:
   - clearall
   - printallitems
@@ -699,6 +710,103 @@ MonoBehaviour:
   - clearallmoney
   - startevent
   currentMoney: 10
+--- !u!82 &1778659432
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1778659428}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

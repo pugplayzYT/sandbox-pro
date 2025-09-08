@@ -405,12 +405,100 @@ public class SimulationManager : MonoBehaviour
     {
         for (int y = 0; y < gridHeight; y++) { for (int x = 0; x < gridWidth; x++) { int particleId = grid[x, y]; if (particleDict.TryGetValue(particleId, out ParticleData data) && data != null) { if (data.isLiquid) { float shimmer = 1.0f + Random.Range(-liquidShimmerAmount, liquidShimmerAmount); Color finalColor = data.color * shimmer; finalColor.a = data.color.a; colors[y * gridWidth + x] = finalColor; } else { colors[y * gridWidth + x] = data.color; } } else { colors[y * gridWidth + x] = Color.black; } } }
     }
+    private Vector2 GetGridPositionFromScreen(Vector2 screenPos)
+    {
+        Vector3 worldPos = mainCamera.ScreenToWorldPoint(screenPos);
+        float worldHeight = mainCamera.orthographicSize * 2.0f;
+        float worldWidth = worldHeight * mainCamera.aspect;
 
+        float normX = (worldPos.x + worldWidth / 2.0f) / worldWidth;
+        float normY = (worldPos.y + worldHeight / 2.0f) / worldHeight;
+        normX = Mathf.Clamp01(normX);
+        normY = Mathf.Clamp01(normY);
+
+        return new Vector2(Mathf.FloorToInt(normX * gridWidth), Mathf.FloorToInt(normY * gridHeight));
+    }
     void HandleMouseInput()
     {
-        if (UIManager.IsPointerOverUI) return; Vector3 worldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition); float worldHeight = mainCamera.orthographicSize * 2.0f; float worldWidth = worldHeight * mainCamera.aspect; float normX = (worldPos.x + worldWidth / 2.0f) / worldWidth; float normY = (worldPos.y + worldHeight / 2.0f) / worldHeight; normX = Mathf.Clamp01(normX); normY = Mathf.Clamp01(normY); Vector2 currentMouseGridPos = new Vector2(Mathf.FloorToInt(normX * gridWidth), Mathf.FloorToInt(normY * gridHeight)); if (Input.GetMouseButton(0)) { if (lastMouseGridPosition != -Vector2.one) { PaintLine((int)lastMouseGridPosition.x, (int)lastMouseGridPosition.y, (int)currentMouseGridPos.x, (int)currentMouseGridPos.y, currentBrushId); } Paint((int)currentMouseGridPos.x, (int)currentMouseGridPos.y, currentBrushId); } else if (Input.GetMouseButton(1)) { if (lastMouseGridPosition != -Vector2.one) { PaintLine((int)lastMouseGridPosition.x, (int)lastMouseGridPosition.y, (int)currentMouseGridPos.x, (int)currentMouseGridPos.y, 0); } Paint((int)currentMouseGridPos.x, (int)currentMouseGridPos.y, 0); }
-        if (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1)) { lastMouseGridPosition = -Vector2.one; } else { lastMouseGridPosition = currentMouseGridPos; }
-        for (int i = 0; i < particleTypes.Count; i++) { if (i < 9 && Input.GetKeyDown(KeyCode.Alpha1 + i)) { currentBrushId = particleTypes[i].id; } }
+        // If we're over the UI, reset the last position to prevent drawing lines from the UI.
+        if (UIManager.IsPointerOverUI)
+        {
+            lastMouseGridPosition = -Vector2.one;
+            return;
+        }
+
+#if UNITY_ANDROID || UNITY_IOS
+        // --- Touch-Specific Logic for Mobile ---
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+            Vector2 currentMouseGridPos = GetGridPositionFromScreen(touch.position);
+
+            // On a new touch, just paint a single dot. No lines.
+            if (touch.phase == TouchPhase.Began)
+            {
+                Paint((int)currentMouseGridPos.x, (int)currentMouseGridPos.y, currentBrushId);
+                lastMouseGridPosition = currentMouseGridPos;
+            }
+            // If dragging, now we draw a line.
+            else if (touch.phase == TouchPhase.Moved)
+            {
+                if (lastMouseGridPosition != -Vector2.one)
+                {
+                    PaintLine((int)lastMouseGridPosition.x, (int)lastMouseGridPosition.y, (int)currentMouseGridPos.x, (int)currentMouseGridPos.y, currentBrushId);
+                }
+                lastMouseGridPosition = currentMouseGridPos;
+            }
+            // When the touch ends, reset everything.
+            else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
+            {
+                lastMouseGridPosition = -Vector2.one;
+            }
+        }
+#else
+    // --- Mouse Logic for PC (now it's fixed too!) ---
+    Vector2 currentMouseGridPos = GetGridPositionFromScreen(Input.mousePosition);
+
+    // On the first frame of a click, just paint one spot and set the last position
+    if (Input.GetMouseButtonDown(0))
+    {
+        Paint((int)currentMouseGridPos.x, (int)currentMouseGridPos.y, currentBrushId);
+        lastMouseGridPosition = currentMouseGridPos;
+    }
+    else if (Input.GetMouseButtonDown(1))
+    {
+        Paint((int)currentMouseGridPos.x, (int)currentMouseGridPos.y, 0);
+        lastMouseGridPosition = currentMouseGridPos;
+    }
+    // If the mouse is HELD, then we draw a line
+    else if (Input.GetMouseButton(0))
+    {
+        if (lastMouseGridPosition != -Vector2.one)
+        {
+            PaintLine((int)lastMouseGridPosition.x, (int)lastMouseGridPosition.y, (int)currentMouseGridPos.x, (int)currentMouseGridPos.y, currentBrushId);
+        }
+        lastMouseGridPosition = currentMouseGridPos;
+    }
+    else if (Input.GetMouseButton(1))
+    {
+        if (lastMouseGridPosition != -Vector2.one)
+        {
+            PaintLine((int)lastMouseGridPosition.x, (int)lastMouseGridPosition.y, (int)currentMouseGridPos.x, (int)currentMouseGridPos.y, 0);
+        }
+        lastMouseGridPosition = currentMouseGridPos;
+    }
+    // If no button is held, reset
+    else
+    {
+        lastMouseGridPosition = -Vector2.one;
+    }
+#endif
+
+        // Handle keyboard shortcuts for brush selection (mostly for PC)
+        for (int i = 0; i < particleTypes.Count; i++)
+        {
+            if (i < 9 && Input.GetKeyDown(KeyCode.Alpha1 + i)) { currentBrushId = particleTypes[i].id; }
+        }
         if (Input.GetKeyDown(KeyCode.Alpha0) || Input.GetKeyDown(KeyCode.E)) { currentBrushId = 0; }
     }
 
