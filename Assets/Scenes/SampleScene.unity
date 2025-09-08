@@ -601,7 +601,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bfe7be35fc45e24ca19f159c5256e10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  serverUrl: https://concerning-normal-monster-writers.trycloudflare.com
+  serverUrl: https://fu-short-regard-estate.trycloudflare.com
   adminAnnounceKey: penislol
   uiManager: {fileID: 1778659431}
   eventManager: {fileID: 1564833985}

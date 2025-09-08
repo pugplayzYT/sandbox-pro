@@ -134,30 +134,38 @@ public class AnnouncementClient : MonoBehaviour
         });
 
         // NEW: Event handlers for global events
-
-        // THE FIX FOR THE CLIENT: Get the response as a single JObject.
         client.On("start_event", (response) =>
         {
             try
             {
-                // The response itself is an array, so grab as JArray
-                var arr = response.GetValue<JArray>();
-                if (arr != null && arr.Count > 0)
+                // Parse the response string directly to handle the nested array structure
+                string rawResponseStr = response.ToString();
+                Debug.Log($"[{DateTime.Now:HH:mm:ss}] Raw start_event response: {rawResponseStr}");
+
+                // Parse using Newtonsoft.Json since we're already using it
+                var outerArray = Newtonsoft.Json.JsonConvert.DeserializeObject<List<List<Dictionary<string, object>>>>(rawResponseStr);
+
+                if (outerArray != null && outerArray.Count > 0 &&
+                    outerArray[0] != null && outerArray[0].Count > 0)
                 {
-                    var eventData = arr[0].ToObject<JObject>();
-                    if (eventData != null)
-                    {
-                        eventStartQueue.Enqueue(eventData);
-                    }
+                    var eventData = outerArray[0][0];
+
+                    // Convert the Dictionary to JObject for consistency with the rest of your code
+                    var jObject = JObject.FromObject(eventData);
+
+                    Debug.Log($"[{DateTime.Now:HH:mm:ss}] Successfully parsed start_event: {jObject}");
+                    eventStartQueue.Enqueue(jObject);
+                }
+                else
+                {
+                    Debug.LogError($"Failed to parse nested array structure from: {rawResponseStr}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Error processing 'start_event': {ex.Message}\nRaw: {response}");
+                Debug.LogError($"Error processing 'start_event': {ex.Message}\nStack: {ex.StackTrace}\nRaw: {response}");
             }
         });
-
-
 
         client.On("end_event", (response) =>
         {

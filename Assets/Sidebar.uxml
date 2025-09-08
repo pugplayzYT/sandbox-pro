@@ -1,21 +1,31 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
     <ui:VisualElement name="root-container" style="width: 100%; height: 100%; picking-mode: Ignore;">
-
         <ui:VisualElement name="sidebar-container" class="sidebar-container" style="width: 200px; height: 100%; position: absolute; left: 0; top: 0; picking-mode: Auto;">
             <ui:Label text="Elements" class="sidebar-title" />
             <ui:ScrollView>
                 <ui:VisualElement name="button-list" class="button-list" />
             </ui:ScrollView>
         </ui:VisualElement>
-
+        
         <ui:Label name="fps-label" text="FPS: --" style="position: absolute; top: 10px; right: 15px; color: white; -unity-font-style: bold; font-size: 20px;" />
         
         <ui:Label name="money-label" text="Money: $10.00" style="position: absolute; top: 35px; right: 15px; color: yellow; -unity-font-style: bold; font-size: 16px;" />
-
-<ui:VisualElement name="announcement-banner" style="display: none; position: absolute; top: -100px; left: 0; width: 100%; height: 40px; background-color: rgba(255, 255, 255, 0.9); align-items: center; justify-content: center; transition-duration: 0.5s;">
+        
+        <!-- EVENT UI CONTAINER - THIS WAS MISSING -->
+        <ui:VisualElement name="event-container" style="display: none; position: absolute; top: 70px; right: 15px; background-color: rgba(50, 0, 100, 0.9); border-radius: 5px; padding: 10px; border-width: 2px; border-color: rgba(150, 100, 255, 1);">
+            <ui:Label name="event-name-label" text="Event Name" style="color: white; font-size: 18px; -unity-font-style: bold; margin-bottom: 5px;" />
+            <ui:Label name="event-timer-label" text="Time Left: 0s" style="color: yellow; font-size: 14px;" />
+            
+            <!-- Event Tooltip (shows on hover) -->
+            <ui:VisualElement name="event-tooltip" style="display: none; position: absolute; top: 100%; right: 0; background-color: rgba(0, 0, 0, 0.9); border-radius: 3px; padding: 5px; margin-top: 5px; border-width: 1px; border-color: rgba(150, 100, 255, 0.5);">
+                <ui:Label name="event-multiplier-label" text="x2.00 Money" style="color: lime; font-size: 12px; white-space: nowrap;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+        <ui:VisualElement name="announcement-banner" style="display: none; position: absolute; top: -100px; left: 0; width: 100%; height: 40px; background-color: rgba(255, 255, 255, 0.9); align-items: center; justify-content: center; transition-duration: 0.5s;">
             <ui:Label name="announcement-label" style="color: black; font-size: 20px;" />
         </ui:VisualElement>
-
+        
         <ui:VisualElement name="console-container" style="position: absolute; bottom: 0; left: 0; width: 100%; background-color: rgba(0, 0, 0, 0.8); flex-direction: column; padding: 5px; display: none; picking-mode: Auto;">
             <ui:ScrollView name="console-output-scrollview" style="flex-grow: 1; padding-right: 5px;">
                 <ui:VisualElement name="console-output-container" style="min-height: 100%; justify-content: flex-end;" />
@@ -23,6 +33,5 @@
             <ui:TextField name="console-input" style="color: white; background-color: rgba(255, 255, 255, 0.1);" />
             <ui:VisualElement name="autocomplete-box" style="flex-direction: column; margin-top: 5px;" />
         </ui:VisualElement>
-
     </ui:VisualElement>
 </ui:UXML>
